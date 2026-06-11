@@ -1,6 +1,7 @@
 import regex as re
 from multiprocessing import Pool
 from typing import BinaryIO
+import os
 def find_chunk_boundaries(
     file: BinaryIO,
     desired_num_chunks: int,
