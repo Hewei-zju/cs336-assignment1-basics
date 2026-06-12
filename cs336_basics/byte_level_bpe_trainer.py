@@ -2,6 +2,10 @@ import regex as re
 from multiprocessing import Pool
 from typing import BinaryIO
 import os
+import time
+from datetime import datetime
+import pickle
+
 def find_chunk_boundaries(
     file: BinaryIO,
     desired_num_chunks: int,
@@ -75,13 +79,31 @@ def pre_tokenize(text : str , special_tokens : list[str],**kwargs) -> list[str] 
     for st in text_splited :
         result.extend(re.findall(PAT,st))
     return result
-def pre_tokenize_for_chunk(start:int,end:int,file_path : str ,special_tokens:list[str]) ->list[str]:
+
+def pre_tokenize_for_chunk(start:int,end:int,file_path : str ,special_tokens:list[str]) ->dict[tuple[bytes,bytes] : int]:
     with open(file_path,"rb") as f :
         f.seek(start)
         chunk_text = f.read(end-start).decode("utf-8",errors = "ignore")
-    return pre_tokenize(chunk_text,special_tokens)
+    words_list =   pre_tokenize(chunk_text,special_tokens)
+    freq_table = {}
+    for token_block in words_list :
+        token_block_unicode = token_block.encode("utf-8")
+        key = tuple(bytes([b]) for b in token_block_unicode)
+        freq_table[key] = freq_table.get(key,0) + 1
+    return freq_table
+
+def merge_freq_tables(freq_tables : list[dict[tuple[bytes,bytes] : int]]) -> dict[tuple[bytes,bytes] : int] :
+    freq_table = {}
+    for d in freq_tables :
+        for token_tuple, count in d.items():
+            freq_table[token_tuple] = freq_table.get(token_tuple,0) + count
+    return freq_table
+
 
 def train_bpe(file_path ,vocab_size , special_tokens :list[bytes],**kwargs) ->tuple[dict[int,bytes],list[tuple[bytes,bytes]]] :
+    time_start = time.perf_counter()
+    # print(f"training start at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
     # with open(file_path,"rb",encoding="utf-8") as f :
     #     text = f.read()
     #initialize the vocab_dict and merges
@@ -92,26 +114,27 @@ def train_bpe(file_path ,vocab_size , special_tokens :list[bytes],**kwargs) ->tu
         vocab_dict[len(vocab_dict)] = st.encode("utf-8")
     merges = list()
     #pre-tokenize -> list of str
-    text_splited : list[str] = []
     with open(file_path,"rb") as f :
-        num_chunk = 4
+        num_chunk = 64
+        num_process = 1
         split_special_token = "<|endoftext|>".encode("utf-8")
         boundaries = find_chunk_boundaries(f,num_chunk,split_special_token)
         # for start,end in zip(boundaries[:-1],boundaries[1:]) :
         #     f.seek(start)
         #     chunk_text = f.read(end-start).decode("utf-8",errors="ignore")
         #     text_splited.extend(pre_tokenize(chunk_text,special_tokens))
-        with Pool(processes=num_chunk) as pool :
+        with Pool(processes=num_process) as pool :
             data_tuple = [tuple([start,end,file_path,special_tokens]) for start,end in zip(boundaries[:-1],boundaries[1:])]
-            chunks = pool.starmap(pre_tokenize_for_chunk,data_tuple)
-    for chunk in chunks : text_splited.extend(chunk)
+            freq_tables = pool.starmap(pre_tokenize_for_chunk,data_tuple)
+
+    freq_table = merge_freq_tables(freq_tables)
+    # print(f"pre-tokenization done, elapsed: {time.perf_counter() - time_start:.2f}s")
 
 
-    freq_table :dict[tuple[bytes,],int] = {}
-    for token_block in text_splited :
-        token_block_unicode = token_block.encode("utf-8")
-        key = tuple(bytes([b]) for b in token_block_unicode)
-        freq_table[key] = freq_table.get(key,0) + 1
+    # for token_block in text_splited :
+    #     token_block_unicode = token_block.encode("utf-8")
+    #     key = tuple(bytes([b]) for b in token_block_unicode)
+    #     freq_table[key] = freq_table.get(key,0) + 1
     
     pair_freq : dict[tuple[bytes,bytes],int] = {} 
     train_count = 1
@@ -122,7 +145,7 @@ def train_bpe(file_path ,vocab_size , special_tokens :list[bytes],**kwargs) ->tu
                 for p in zip(tp,tp[1:]) :
                     pair_freq[p] = pair_freq.get(p,0) + freq_table[tp]
         if not pair_freq : break
-        
+        # if train_count % 1000 == 0 : print(f"training count: {train_count}s,elapsed: {time.perf_counter() - time_start:.2f}s")
         max_pair = max(pair_freq,key=lambda k : (pair_freq[k],k))
         merges.append(max_pair)
         vocab_dict[len(vocab_dict)] = max_pair[0] + max_pair[1]
@@ -153,15 +176,21 @@ def update_pair_freq(old_token_tuple,new_token_tuple,pair_freq,count) :
             pair_freq.pop(p,None)
     return
 
-
+def save(vocab_dict,merges,output_path_vocab,output_path_merges) :
+    with open(output_path_vocab,"wb") as f:
+        pickle.dump(vocab_dict,f)
+    with open(output_path_merges,"wb") as f:
+        pickle.dump(merges,f)
     
 def main():
-    vocab_size = 50304
+    vocab_size = 10000
     special_tokens = ["<|endoftext|>"]
     file_path = "/mnt/d/用户/Desktop/CS336/assignment1-basics/data/test.txt"
+    output_path = "/mnt/d/用户/Desktop/CS336/assignment1-basics/data"
     vocab_dict, merges = train_bpe(file_path,vocab_size,special_tokens)
-    print(vocab_dict)
-    print(merges)
+    # save(vocab_dict,merges,output_path_vocab,output_path_merges)
+    # print("vocab_size is : " , len(vocab_dict))
+    # print("merges_size is : " , len(merges))
 
 if __name__ == "__main__":
     main()
