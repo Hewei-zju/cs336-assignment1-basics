@@ -53,9 +53,9 @@ def find_chunk_boundaries(
     # Make sure all boundaries are unique, but might be fewer than desired_num_chunks
     return sorted(set(chunk_boundaries))
 
-def merge_token_tuple(token_tuple : tuple[bytes,...],max_pair : tuple[bytes,bytes]) -> tuple[bytes,...] :
-    l1 = max_pair[0]
-    l2 = max_pair[1]
+def merge_token_tuple(token_tuple : tuple[bytes,...],merged_pair : tuple[bytes,bytes]) -> tuple[bytes,...] :
+    l1 = merged_pair[0]
+    l2 = merged_pair[1]
     if (l1 not in token_tuple) or (l2 not in token_tuple) : return token_tuple
 
     new_token_tuple = []
@@ -70,14 +70,17 @@ def merge_token_tuple(token_tuple : tuple[bytes,...],max_pair : tuple[bytes,byte
     return tuple(new_token_tuple)
 
 
-def pre_tokenize(text : str , special_tokens : list[str],**kwargs) -> list[str] :
+def pre_tokenize(text : str , special_tokens : list[str] ,**kwargs) -> list[str] :
     result = []
     #divide by special tokens
-    special_pat = "|".join(re.escape(token) for token in sorted(special_tokens,key=len,reverse= True))
-    text_splited = re.split(special_pat,text)
+    if  special_tokens : 
+        special_pat = "|".join(re.escape(token) for token in sorted(special_tokens,key=len,reverse= True))
+        text_splited_st = re.split(special_pat,text)
+    else :
+        text_splited_st = text
     #divide by re
     PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-    for st in text_splited :
+    for st in text_splited_st :
         result.extend(re.findall(PAT,st))
     return result
 
@@ -191,11 +194,10 @@ def main():
     vocab_size = 10000
     special_tokens = ["<|endoftext|>"]
     file_path = "/mnt/d/用户/Desktop/CS336/assignment1-basics/data/TinyStoriesV2-GPT4-train.txt"
-    output_path_vocab = "/mnt/d/用户/Desktop/CS336/assignment1-basics/data/vocab_ow"
-    output_path_merges ="/mnt/d/用户/Desktop/CS336/assignment1-basics/data/merges_ow" 
+    output_path_vocab = "/mnt/d/用户/Desktop/CS336/assignment1-basics/data/vocab_ts.pkl"
+    output_path_merges ="/mnt/d/用户/Desktop/CS336/assignment1-basics/data/merges_ts.pkl" 
     vocab_dict, merges = train_bpe(file_path,vocab_size,special_tokens)
     save(vocab_dict,merges,output_path_vocab,output_path_merges)
     print(max(vocab_dict.items(),key=lambda item : len(item[1])))
-
 if __name__ == "__main__":
     main()
