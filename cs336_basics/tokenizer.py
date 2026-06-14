@@ -1,5 +1,5 @@
 import pickle
-from .byte_level_bpe_trainer import *
+import regex as re
 from collections.abc import Iterable,Iterator
 class Tokenizer :
     def __init__(self,vocab,merges,special_tokens=None):
@@ -46,21 +46,45 @@ class Tokenizer :
             token_tuple =  new_token_tuple
 
         return tuple(token_tuple)
+    def pre_tokenize(self,text : str) -> list[str] :
+        """
+        pre_tokenize a text,including special tokens
+        """
+        result = []
+        #divide by special tokens, if no special token do nothing
+        if  self.special_tokens : 
+            special_pat = "("+"|".join(re.escape(token) for token in sorted(self.special_tokens,key=len,reverse= True)) + ")"
+            text_splited_st = re.split(special_pat,text)
+        else :
+            text_splited_st = [text]
+        #divide by re
+        PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+        for st in text_splited_st :
+            if self.special_tokens and st in self.special_tokens :
+                result.append(st)
+            else :
+                result.extend(re.findall(PAT,st))
+        return result
+
     def encode(self,text:str) ->list[int] :
         """
         encode an input text into a sequence of token IDs
         """
-        pre_tokenized_text = pre_tokenize(text,self.special_tokens)
+        pre_tokenized_text = self.pre_tokenize(text)
         pre_tokenized_tokens : dict[tuple[bytes,...]]  = []
         for sub_word in pre_tokenized_text :
             sub_word_unicode = sub_word.encode("utf-8")
-            sub_token = tuple(bytes([b]) for b in sub_word_unicode)
+            if self.special_tokens and sub_word in self.special_tokens :
+                sub_token = tuple([sub_word_unicode])
+            else :
+                sub_token = tuple([bytes([b]) for b in sub_word_unicode])
             pre_tokenized_tokens.append(sub_token)
         merged_tokens : list[bytes] = []
         for token_tuple in pre_tokenized_tokens:
             new_token_tuple = self.merge(token_tuple)
             merged_tokens.extend(new_token_tuple)
         token_ids = []
+        # print(f"the tokens is : {merged_tokens}")
         for token in merged_tokens :
             if token in self.reversed_vocab :
                 token_ids.append(self.reversed_vocab[token])
@@ -89,25 +113,35 @@ class Tokenizer :
         """
         decode a sequence of token IDs into text
         """
-        return [self.vocab[i] for i in ids]
+        # result = ""
+        # return [self.vocab[i] for i in ids]
+        # for i in ids :
+        #     result += self.vocab[i].decode("utf-8")
+        # return result
+        bs = bytes()
+        for id in ids :
+            bs += self.vocab[id]
+        return bs.decode("utf-8",errors="replace")
+
+            
 
 
 
 def main() :
     vocab_filepath = "/mnt/d/用户/Desktop/CS336/assignment1-basics/data/vocab_ts.pkl"
     merges_filepath = "/mnt/d/用户/Desktop/CS336/assignment1-basics/data/merges_ts.pkl"
-    special_tokens = ["<|endoftext|>"]
-    text = "the cat ate mice"
+    special_tokens = None
+    text_filepath = "/mnt/d/用户/Desktop/CS336/assignment1-basics/data/test.txt"
+    # with open(text_filepath,"r",encoding="utf-8") as f :
+    #     text = f.read()
+    text = "the cat ate 你好"
+    print(text.encode("utf-8"))
+    print(f"the text is : {text}")
     tokenizer = Tokenizer.from_files(vocab_filepath,merges_filepath,special_tokens)
     ids = tokenizer.encode(text)
+    print(f"the ids is : {ids}")
     decode_text = tokenizer.decode(ids)
-    print(ids)
-    print(decode_text)
-    it = tokenizer.encode_iterable([text])
-    print(next(it))
-    print(next(it))
-    print(next(it))
-    print(next(it))
+    print(f"decode text is :{decode_text}")
 
 if __name__ == "__main__":
     main()
