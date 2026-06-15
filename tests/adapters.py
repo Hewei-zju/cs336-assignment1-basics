@@ -10,12 +10,17 @@ from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
 
+from cs336_basics.linear import Linear
 def run_linear(
     d_in: int,
     d_out: int,
     weights: Float[Tensor, " d_out d_in"],
     in_features: Float[Tensor, " ... d_in"],
 ) -> Float[Tensor, " ... d_out"]:
+    ll = Linear(d_in,d_out)
+    ll.load_state_dict({"w":weights})
+    return ll(in_features)
+
     """
     Given the weights of a Linear layer, compute the transformation of a batched input.
 
