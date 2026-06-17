@@ -37,12 +37,17 @@ def run_linear(
     raise NotImplementedError
 
 
+from cs336_basics.embedding import Embedding
 def run_embedding(
     vocab_size: int,
     d_model: int,
     weights: Float[Tensor, " vocab_size d_model"],
     token_ids: Int[Tensor, " ..."],
 ) -> Float[Tensor, " ... d_model"]:
+    eb = Embedding(vocab_size,d_model)
+    eb.load_state_dict({"embedding_matrix":weights})
+    return eb(token_ids)
+
     """
     Given the weights of an Embedding layer, get the embeddings for a batch of token ids.
 
