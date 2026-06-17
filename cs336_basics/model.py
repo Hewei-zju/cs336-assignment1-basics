@@ -20,15 +20,13 @@ class Linear(nn.Module) :
         return einsum(self.w,x,"out_features in_features,... in_features -> ... out_features")
 
 
-
-def main():
-    l = Linear(3,4)
-    x = torch.Tensor(5,3)
-    output = l.forward(x)
-    print(f"weight shape: {l.w.size()}")
-    print(f"input : {x.size()}")
-    print(f"output : {output.size()}")
-
-
-if __name__ == "__main__" :
-    main()
+class Embedding(nn.Module) :
+    def __init__(self,num_embeddings,embedding_dim,device=None,dtype=None):
+        """
+        num_embeddings : vocab_size
+        embedding_dim : C
+        """
+        super().__init__()
+        self.embedding_matrix = nn.Parameter(torch.randn(num_embeddings,embedding_dim))
+    def forward(self,token_ids:torch.Tensor) -> torch.Tensor :
+        return self.embedding_matrix[token_ids.long()]

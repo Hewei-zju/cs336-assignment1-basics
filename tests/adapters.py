@@ -10,7 +10,7 @@ from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
 
-from cs336_basics.linear import Linear
+from cs336_basics.model import Linear
 def run_linear(
     d_in: int,
     d_out: int,
@@ -37,7 +37,7 @@ def run_linear(
     raise NotImplementedError
 
 
-from cs336_basics.embedding import Embedding
+from cs336_basics.model import Embedding
 def run_embedding(
     vocab_size: int,
     d_model: int,
