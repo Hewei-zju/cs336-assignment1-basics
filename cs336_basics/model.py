@@ -57,17 +57,7 @@ class RMSNorm(nn.Module):
 
 
 def main() :
-    eps = 1e-5
-    x = torch.tensor([[1,2,3],[4,5,6]])
-    x = x.to(torch.float32)
-    print(f"x : {x}, shape : {x.shape}")
-    in_dtype = x.dtype
-    rms = torch.sqrt(eps+(x**2).mean(dim=-1,keepdim = True))
-    print(f"rms : {rms}, shape : {rms.shape}")
-    x = x/rms
-    print(f"x : {x}, shape : {x.shape}")
-    # result = einsum(self.g,x,"")
-    # result = x 
+    pass
 
 if __name__ == "__main__" :
     main()
