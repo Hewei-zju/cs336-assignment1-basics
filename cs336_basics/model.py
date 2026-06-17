@@ -28,5 +28,46 @@ class Embedding(nn.Module) :
         """
         super().__init__()
         self.embedding_matrix = nn.Parameter(torch.randn(num_embeddings,embedding_dim))
+        self.device = device
+        self.dtype = dtype
     def forward(self,token_ids:torch.Tensor) -> torch.Tensor :
         return self.embedding_matrix[token_ids.long()]
+
+
+
+class RMSNorm(nn.Module):
+    def __init__(self,d_model:int,eps:float = 1e-5,device=None,dtype=None):
+        """
+        d_model: C
+        """
+        super().__init__()
+        self.eps = eps
+        self.d_model = d_model
+        self.g = nn.Parameter(torch.randn(d_model))
+        self.device = device
+        self.dtype = dtype
+    def forward(self,x:torch.Tensor) ->torch.Tensor :
+        x = x.to(torch.float32)
+        in_dtype = x.dtype
+        rms = torch.sqrt(self.eps+(x**2).mean(dim=-1,keepdim = True))
+        result = (x/rms)*self.g
+        # result = einsum(self.g,x,"")
+        return result.to(in_dtype)
+
+
+
+def main() :
+    eps = 1e-5
+    x = torch.tensor([[1,2,3],[4,5,6]])
+    x = x.to(torch.float32)
+    print(f"x : {x}, shape : {x.shape}")
+    in_dtype = x.dtype
+    rms = torch.sqrt(eps+(x**2).mean(dim=-1,keepdim = True))
+    print(f"rms : {rms}, shape : {rms.shape}")
+    x = x/rms
+    print(f"x : {x}, shape : {x.shape}")
+    # result = einsum(self.g,x,"")
+    # result = x 
+
+if __name__ == "__main__" :
+    main()

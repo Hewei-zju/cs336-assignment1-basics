@@ -367,13 +367,16 @@ def run_transformer_lm(
     """
     raise NotImplementedError
 
-
+from cs336_basics.model import RMSNorm
 def run_rmsnorm(
     d_model: int,
     eps: float,
     weights: Float[Tensor, " d_model"],
     in_features: Float[Tensor, " ... d_model"],
 ) -> Float[Tensor, " ... d_model"]:
+    rmsn = RMSNorm(d_model,eps)
+    rmsn.load_state_dict({"g":weights})
+    return rmsn(in_features)
     """Given the weights of a RMSNorm affine transform,
     return the output of running RMSNorm on the input features.
 
