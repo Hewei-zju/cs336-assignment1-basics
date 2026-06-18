@@ -54,6 +54,29 @@ class RMSNorm(nn.Module):
         # result = einsum(self.g,x,"")
         return result.to(in_dtype)
 
+class FFN(nn.Module):
+    """
+    position wise feed forward network
+    """
+    def __init__(self,d_model,d_ff = None):
+        super().__init__()
+        self.d_model = d_model
+        if not d_ff :
+            d_ff = (8/3)*d_model
+            self.d_ff = 64*math.ceil(d_ff/64)
+        else :
+            self.d_ff = d_ff
+        self.w1 = Linear(self.d_model,self.d_ff)
+        self.w3 = Linear(self.d_model,self.d_ff)
+        self.w2 = Linear(self.d_ff,self.d_model)
+    def SiLU(self,x : torch.Tensor):
+        return torch.sigmoid(x)*x
+    def forward(self,x:torch.Tensor) :
+        # x(....,d_model) -> ... -> x(...,d_model)
+        return self.w2(self.SiLU(self.w1(x))*self.w3(x))
+
+
+
 
 
 def main() :

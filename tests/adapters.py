@@ -63,7 +63,7 @@ def run_embedding(
 
     raise NotImplementedError
 
-
+from cs336_basics.model import FFN
 def run_swiglu(
     d_model: int,
     d_ff: int,
@@ -72,6 +72,9 @@ def run_swiglu(
     w3_weight: Float[Tensor, " d_ff d_model"],
     in_features: Float[Tensor, " ... d_model"],
 ) -> Float[Tensor, " ... d_model"]:
+    ffn = FFN(d_model,d_ff)
+    ffn.load_state_dict({"w1.w" : w1_weight,"w2.w":w2_weight,"w3.w":w3_weight})
+    return ffn(in_features)
     """Given the weights of a SwiGLU network, return
     the output of your implementation with these weights.
 
