@@ -6,12 +6,12 @@ import math
 class Linear(nn.Module) :
     def __init__(self,in_features,out_features,device=None,dtype=None):
         super().__init__()
-        self.w = nn.Parameter(torch.randn(out_features,in_features))
+        self.device = device
+        self.dtype = dtype
+        self.w = nn.Parameter(torch.randn(out_features,in_features,device=self.device,dtype=self.dtype))
         sigma = 2/(in_features+out_features)
         std_sigma = math.sqrt(sigma)
         nn.init.trunc_normal_(self.w,mean=0,std=sigma,a=-3*sigma,b=3*sigma)
-        self.device = device
-        self.dtype = dtype
     
     def forward(self,x:torch.Tensor) -> torch.Tensor :
         """
@@ -27,7 +27,7 @@ class Embedding(nn.Module) :
         embedding_dim : C
         """
         super().__init__()
-        self.embedding_matrix = nn.Parameter(torch.randn(num_embeddings,embedding_dim))
+        self.embedding_matrix = nn.Parameter(torch.randn(num_embeddings,embedding_dim,device=device,dtype=dtype))
         self.device = device
         self.dtype = dtype
     def forward(self,token_ids:torch.Tensor) -> torch.Tensor :
@@ -43,7 +43,7 @@ class RMSNorm(nn.Module):
         super().__init__()
         self.eps = eps
         self.d_model = d_model
-        self.g = nn.Parameter(torch.randn(d_model))
+        self.g = nn.Parameter(torch.randn(d_model,device=device,dtype=dtype))
         self.device = device
         self.dtype = dtype
     def forward(self,x:torch.Tensor) ->torch.Tensor :
