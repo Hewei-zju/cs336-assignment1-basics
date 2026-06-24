@@ -194,6 +194,7 @@ def run_multihead_self_attention_with_rope(
     raise NotImplementedError
 
 
+from cs336_basics.model import RotaryPositionEmbedding
 def run_rope(
     d_k: int,
     theta: float,
@@ -201,6 +202,8 @@ def run_rope(
     in_query_or_key: Float[Tensor, " ... sequence_length d_k"],
     token_positions: Int[Tensor, " ... sequence_length"],
 ) -> Float[Tensor, " ... sequence_length d_k"]:
+    rope = RotaryPositionEmbedding(theta,d_k,max_seq_len)
+    return rope(in_query_or_key,token_positions)
     """
     Run RoPE for a given input tensor.
 

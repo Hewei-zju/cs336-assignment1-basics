@@ -71,15 +71,35 @@ class FFN(nn.Module):
         self.w2 = Linear(self.d_ff,self.d_model)
     def SiLU(self,x : torch.Tensor):
         return torch.sigmoid(x)*x
-    def forward(self,x:torch.Tensor) :
+    def forward(self,x:torch.Tensor):
         # x(....,d_model) -> ... -> x(...,d_model)
         return self.w2(self.SiLU(self.w1(x))*self.w3(x))
 
+class RotaryPositionEmbedding(nn.Module):
+    def __init__(self,theta : float,d_k:int,max_seq_len:int, device=None) :
+        super().__init__()
+        self.theta = theta
+        self.d_k = d_k
+        self.max_seq_len = max_seq_len
+        self.device = device
+        i = torch.arange(self.max_seq_len,device=self.device).float() # shape (max_seq_len)
+        k = torch.arange(self.d_k//2,device=self.device).float()+1.0 # k = [1,...,d_k/2]
+        w = 1.0/(self.theta**((2*k-2)/self.d_k)) # shape (d_k/2)
+        angle = einsum(i,w,'i,w->i w')
+        self.register_buffer("sin_cache",torch.sin(angle),persistent = False) #shape = (max_seq_len,d_k/2)
+        self.register_buffer("cos_cache",torch.cos(angle),persistent = False) 
+    def forward(self, x:torch.Tensor, token_positions : torch.Tensor) -> torch.Tensor :
+        sin = self.sin_cache[token_positions] #shape : (...,seq_len,d_k/2)
+        cos = self.cos_cache[token_positions]
+        even = x[...,0::2]*cos - x[...,1::2]*sin
+        odd = x[...,0::2]*sin + x[...,1::2]*cos
+        out_put = torch.empty_like(x)
+        out_put[...,0::2] = even
+        out_put[...,1::2] = odd
+        return out_put
 
 
-
-
-def main() :
+def main():
     pass
 
 if __name__ == "__main__" :
