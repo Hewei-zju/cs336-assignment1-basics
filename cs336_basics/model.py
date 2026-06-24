@@ -110,9 +110,7 @@ def softmax(x : torch.Tensor, i : int) :
 
 
 def main():
-    x = torch.tensor([[1,2,3],[4,5,6]])
-    sm = softmax(x,i=1)
-    print(sm)
+    pass
 
 if __name__ == "__main__" :
     main()
