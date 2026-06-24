@@ -98,9 +98,21 @@ class RotaryPositionEmbedding(nn.Module):
         out_put[...,1::2] = odd
         return out_put
 
+def softmax(x : torch.Tensor, i : int) :
+    """
+    apply softmax on the i-th dimension of the tensor
+    """
+    max_value = x.max(dim=i,keepdim = True).values
+    x_ = x - max_value 
+    s = torch.sum(torch.exp(x_),dim = i,keepdim = True)
+    out_put = torch.exp(x_)/s
+    return out_put
+
 
 def main():
-    pass
+    x = torch.tensor([[1,2,3],[4,5,6]])
+    sm = softmax(x,i=1)
+    print(sm)
 
 if __name__ == "__main__" :
     main()
