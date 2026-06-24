@@ -85,7 +85,7 @@ class RotaryPositionEmbedding(nn.Module):
         i = torch.arange(self.max_seq_len,device=self.device).float() # shape (max_seq_len)
         k = torch.arange(self.d_k//2,device=self.device).float()+1.0 # k = [1,...,d_k/2]
         w = 1.0/(self.theta**((2*k-2)/self.d_k)) # shape (d_k/2)
-        angle = einsum(i,w,'i,w->i w')
+        angle = einsum(i,w,"i,w->i w")
         self.register_buffer("sin_cache",torch.sin(angle),persistent = False) #shape = (max_seq_len,d_k/2)
         self.register_buffer("cos_cache",torch.cos(angle),persistent = False) 
     def forward(self, x:torch.Tensor, token_positions : torch.Tensor) -> torch.Tensor :
@@ -108,9 +108,20 @@ def softmax(x : torch.Tensor, i : int) :
     out_put = torch.exp(x_)/s
     return out_put
 
+def scaled_dot_product_attention(Q,K,V,mask=None) :
+    Q_K = einsum(Q,K,"... q d,... k d->... q k")/math.sqrt(float(Q.shape[-1]))
+    seq_len = Q.shape[-2]
+    if mask == None:
+        mask = torch.tril(torch.ones(seq_len,seq_len,dtype=torch.bool)) 
+        print(f"mask : {mask}")
+    QK_masked = Q_K.masked_fill(~mask,float("-inf"))
+    A = softmax(QK_masked,-1)
+    out_put = einsum(A,V,"... q k,... k v->... q v")
+    return out_put
 
 def main():
-    pass
+    triu = torch.triu(torch.ones(3,3,dtype=torch.bool))
+    print(triu)
 
 if __name__ == "__main__" :
     main()
