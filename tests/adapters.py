@@ -121,7 +121,7 @@ def run_scaled_dot_product_attention(
     return scaled_dot_product_attention(Q,K,V,mask)
     raise NotImplementedError
 
-
+from cs336_basics.model import Multihead_Self_Attention
 def run_multihead_self_attention(
     d_model: int,
     num_heads: int,
@@ -131,6 +131,9 @@ def run_multihead_self_attention(
     o_proj_weight: Float[Tensor, " d_model d_model"],
     in_features: Float[Tensor, " ... sequence_length d_model"],
 ) -> Float[Tensor, " ... sequence_length d_model"]:
+    mhsa = Multihead_Self_Attention(d_model=d_model,num_heads=num_heads)
+    mhsa.load_state_dict({"W_Q.w" :q_proj_weight,"W_K.w":k_proj_weight,"W_V.w":v_proj_weight,"W_O.w":o_proj_weight})
+    return mhsa(in_features)
     """
     Given the key, query, and value projection weights of a naive unbatched
     implementation of multi-head attention, return the output of an optimized batched
@@ -168,6 +171,10 @@ def run_multihead_self_attention_with_rope(
     in_features: Float[Tensor, " ... sequence_length d_model"],
     token_positions: Int[Tensor, " ... sequence_length"] | None = None,
 ) -> Float[Tensor, " ... sequence_length d_model"]:
+    rope = RotaryPositionEmbedding(theta=theta,d_k = d_model/num_heads,max_seq_len=max_seq_len)
+    mhsa = Multihead_Self_Attention(d_model=d_model,num_heads=num_heads,rope=rope)
+    mhsa.load_state_dict({"W_Q.w" :q_proj_weight,"W_K.w":k_proj_weight,"W_V.w":v_proj_weight,"W_O.w":o_proj_weight})
+    return mhsa(in_features,token_positions)
     """
     Given the key, query, and value projection weights of a naive unbatched
     implementation of multi-head attention, return the output of an optimized batched

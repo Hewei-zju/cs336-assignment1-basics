@@ -76,7 +76,7 @@ class FFN(nn.Module):
         return self.w2(self.SiLU(self.w1(x))*self.w3(x))
 
 class RotaryPositionEmbedding(nn.Module):
-    def __init__(self,theta : float,d_k:int,max_seq_len:int, device=None) :
+    def __init__(self,theta,d_k:int,max_seq_len:int, device=None) :
         super().__init__()
         self.theta = theta
         self.d_k = d_k
@@ -85,10 +85,10 @@ class RotaryPositionEmbedding(nn.Module):
         i = torch.arange(self.max_seq_len,device=self.device).float() # shape (max_seq_len)
         k = torch.arange(self.d_k//2,device=self.device).float()+1.0 # k = [1,...,d_k/2]
         w = 1.0/(self.theta**((2*k-2)/self.d_k)) # shape (d_k/2)
-        angle = einsum(i,w,"i,w->i w")
+        angle = einsum(i,w,"i,w->i w") #(max_seq_len,d_k/2)
         self.register_buffer("sin_cache",torch.sin(angle),persistent = False) #shape = (max_seq_len,d_k/2)
         self.register_buffer("cos_cache",torch.cos(angle),persistent = False) 
-    def forward(self, x:torch.Tensor, token_positions : torch.Tensor) -> torch.Tensor :
+    def forward(self, x:torch.Tensor, token_positions : torch.Tensor) -> torch.Tensor : # x shape (...,seq_len,d_k)
         sin = self.sin_cache[token_positions] #shape : (...,seq_len,d_k/2)
         cos = self.cos_cache[token_positions]
         even = x[...,0::2]*cos - x[...,1::2]*sin
@@ -96,7 +96,7 @@ class RotaryPositionEmbedding(nn.Module):
         out_put = torch.empty_like(x)
         out_put[...,0::2] = even
         out_put[...,1::2] = odd
-        return out_put
+        return out_put # (...,seq_len,d_k)
 
 def softmax(x : torch.Tensor, i : int) :
     """
@@ -109,7 +109,7 @@ def softmax(x : torch.Tensor, i : int) :
     return out_put
 
 def scaled_dot_product_attention(Q,K,V,mask=None) :
-    Q_K = einsum(Q,K,"... q d,... k d->... q k")/math.sqrt(float(Q.shape[-1]))
+    Q_K = einsum(Q,K,"... seq_len_q d_k,... seq_len_k d_k->... seq_len_q seq_len_k")/math.sqrt(float(Q.shape[-1]))
     seq_len = Q.shape[-2]
     if mask == None:
         mask = torch.tril(torch.ones(seq_len,seq_len,dtype=torch.bool)) 
@@ -118,6 +118,33 @@ def scaled_dot_product_attention(Q,K,V,mask=None) :
     A = softmax(QK_masked,-1)
     out_put = einsum(A,V,"... q k,... k v->... q v")
     return out_put
+
+class Multihead_Self_Attention(nn.Module):
+    def __init__(self,d_model:int,num_heads:int,rope=None):
+        super().__init__()
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_k = d_model/num_heads
+        self.d_v = d_model/num_heads
+        self.W_Q = Linear(d_model,d_model) #(d_model,h*d_k)
+        self.W_K = Linear(d_model,d_model) #(d_model,h*d_k)
+        self.W_V = Linear(d_model,d_model) #(h*d_v,d_model)
+        self.W_O = Linear(d_model,d_model) #(d_model,h*d_v)
+        self.rope = rope
+    def forward(self,x : torch.Tensor,token_positions = None):
+        Q_cat = self.W_Q(x) 
+        K_cat = self.W_K(x)
+        V_cat = self.W_V(x)
+        Q = rearrange(Q_cat,"... T (h d_k)->... h T d_k",h=self.num_heads)
+        K = rearrange(K_cat,"... T (h d_k)->... h T d_k",h=self.num_heads)
+        if self.rope :
+            Q = self.rope(Q,token_positions)
+            K = self.rope(K,token_positions)
+        V = rearrange(V_cat,"... T (h d_v)->... h T d_v",h=self.num_heads)
+        mh = scaled_dot_product_attention(Q,K,V) #mh shape : (...,h,seq_len,d_v)
+        mh_rearan= rearrange(mh,"... h seq_len d_v->... seq_len (h d_v)")
+        output = self.W_O(mh_rearan)
+        return output
 
 def main():
     triu = torch.triu(torch.ones(3,3,dtype=torch.bool))
