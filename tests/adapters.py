@@ -45,7 +45,7 @@ def run_embedding(
     token_ids: Int[Tensor, " ..."],
 ) -> Float[Tensor, " ... d_model"]:
     eb = Embedding(vocab_size,d_model)
-    eb.load_state_dict({"embedding_matrix":weights})
+    eb.load_state_dict({"weight":weights})
     return eb(token_ids)
 
     """
@@ -307,6 +307,7 @@ def run_transformer_block(
     raise NotImplementedError
 
 
+from cs336_basics.model import Transformer_LM
 def run_transformer_lm(
     vocab_size: int,
     context_length: int,
@@ -318,6 +319,9 @@ def run_transformer_lm(
     weights: dict[str, Tensor],
     in_indices: Int[Tensor, " batch_size sequence_length"],
 ) -> Float[Tensor, " batch_size sequence_length vocab_size"]:
+    trans_lm = Transformer_LM(d_model=d_model,vocab_size=vocab_size,context_length=context_length,num_layers=num_layers,num_heads=num_heads,d_ff=d_ff,theta=rope_theta,)
+    trans_lm.load_state_dict(weights)
+    return trans_lm(in_indices)
     """Given the weights of a Transformer language model and input indices,
     return the output of running a forward pass on the input indices.
 
