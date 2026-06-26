@@ -178,11 +178,25 @@ class Transformer_LM(nn.Module):
             x = layer(x)
         return self.lm_head(self.ln_final(x))
 
-
+def cross_entropy(logits,targets):
+    """
+    logits : output of transformer_lm, shape : (batch_size,vocab_size)
+    targets : shape (batch_size,)
+    """
+    # stable softmax
+    max_logits = torch.max(logits,dim=-1,keepdim=True).values
+    logits = logits - max_logits #(B,V)
+    output = torch.log(torch.sum(torch.exp(logits),dim=-1,keepdim=True)) - logits
+    result = output[torch.arange(targets.shape[0]),targets].mean()
+    return result
 
 def main():
-    triu = torch.triu(torch.ones(3,3,dtype=torch.bool))
-    print(triu)
+    a = torch.tensor([[1,2,3],[4,5,6]])
+    b = torch.max(a,dim=0,keepdim=True).values
+    c = torch.sum(a,dim=1)
+    print(a)
+    print(b)
+    print(c)
 
 if __name__ == "__main__" :
     main()

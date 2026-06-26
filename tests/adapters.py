@@ -239,9 +239,7 @@ def run_transformer_block(
     in_features: Float[Tensor, " batch sequence_length d_model"],
 ) -> Float[Tensor, " batch sequence_length d_model"]:
     trans_block = Transformer_block(d_model=d_model,num_heads=num_heads,d_ff=d_ff,theta=theta,max_seq_len=max_seq_len)
-    print(f"my state dict is :{trans_block.state_dict().keys()}")
     trans_block.load_state_dict(weights)
-    print("done")
     return trans_block(in_features)
     """
     Given the weights of a pre-norm Transformer block and input features,
@@ -473,12 +471,13 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
     return softmax(in_features,dim)
 
 
+from cs336_basics.model import cross_entropy
 def run_cross_entropy(
     inputs: Float[Tensor, " batch_size vocab_size"], targets: Int[Tensor, " batch_size"]
 ) -> Float[Tensor, ""]:
+    return cross_entropy(inputs,targets)
     """Given a tensor of inputs and targets, compute the average cross-entropy
     loss across examples.
-
     Args:
         inputs (Float[Tensor, "batch_size vocab_size"]): inputs[i][j] is the
             unnormalized logit of jth class for the ith example.
@@ -488,7 +487,6 @@ def run_cross_entropy(
     Returns:
         Float[Tensor, ""]: The average cross-entropy loss across examples.
     """
-    raise NotImplementedError
 
 
 def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
