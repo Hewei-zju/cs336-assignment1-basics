@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from einops import rearrange, einsum
 import math
+from collections.abc import Callable,Iterable
+from typing import Optional
 
 class Linear(nn.Module) :
     def __init__(self,in_features,out_features,device=None,dtype=None):
@@ -190,13 +192,71 @@ def cross_entropy(logits,targets):
     result = output[torch.arange(targets.shape[0]),targets].mean()
     return result
 
+class SGD(torch.optim.Optimizer):
+    def __init__(self,params,lr=1e-3):
+        if lr < 0 :
+            raise ValueError(f"Invalid learning rate: {lr}")
+        defaults = {"lr":lr}
+        super().__init__(params,defaults)
+    
+    def step(self,closure:Optional[Callable] = None):
+        loss = None if closure is None else closure()
+        for group in self.param_groups:
+            lr = group["lr"]
+            for p in group["params"]:
+                if p.grad is None:
+                    continue
+                state = self.state[p]
+                t = state.get("t",0)
+                grad = p.grad.data
+                p.data -= lr/math.sqrt(t+1)*grad
+                state["t"] = t+1
+        return loss
+
+
+class AdamW(torch.optim.Optimizer):
+    def __init__(self,params:Iterable[nn.Parameter],lr,eps,betas,weight_decay):
+        if lr < 0 :
+            raise ValueError(f"Invalid learning rate : {lr}")
+        defaults = {"lr":lr,"eps":eps,"weight_decay":weight_decay,"betas":betas}
+        super().__init__(params,defaults)
+    def step(self,closure:Optional[Callable] = None):
+        loss = None if closure is None else closure()
+        for group in self.param_groups:
+            lr = group["lr"]
+            eps = group["eps"]
+            weight_decay = group["weight_decay"]
+            betas = group["betas"]
+            for p in group["params"]:
+                if p.grad is None:
+                    continue
+                state = self.state[p]
+                m = state.get("m",torch.zeros_like(p))
+                v = state.get("v",torch.zeros_like(p))
+                t = state.get("t",1)
+                grad = p.grad.data
+                
+                lr_t = lr*math.sqrt(1-betas[1]**t)/(1-betas[0]**t)
+                p.data -= lr*weight_decay*p.data
+                m = betas[0]*m+(1-betas[0])*grad
+                v = betas[1]*v+(1-betas[1])*(grad**2)
+                p.data -= lr_t*(m/(torch.sqrt(v)+eps))
+
+                #update 
+                state["m"] = m
+                state["v"] = v
+                state["t"] = t+1
+        return loss
+
 def main():
-    a = torch.tensor([[1,2,3],[4,5,6]])
-    b = torch.max(a,dim=0,keepdim=True).values
-    c = torch.sum(a,dim=1)
-    print(a)
-    print(b)
-    print(c)
+    weights = torch.nn.Parameter(5*torch.randn(10,10))
+    opt = SGD([weights],lr=1e1)
+    for t in range(100):
+        opt.zero_grad()
+        loss = (weights**2).mean()
+        print(loss.cpu().item())
+        loss.backward()
+        opt.step()
 
 if __name__ == "__main__" :
     main()
