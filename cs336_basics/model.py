@@ -144,7 +144,22 @@ def gradient_clipping(parameters,max_l2_norm,eps = 1e-6):
             if p.grad is not None:
                 p.grad *= scale_w
 
-
+def data_loading(x,batch_size,context_length,device:str = "cpu"):
+    """
+    x :[token_id,token_id,...]
+    input : (batch_size,context_length)
+    target : (batch_size,context_length)
+    """
+    x = torch.as_tensor(x,device=device)
+    starts = torch.randint(0,len(x)-context_length,(batch_size,),device=device)
+    offset = torch.arange(context_length,device=device)
+    input_idx = starts.unsqueeze(1) + offset
+    target_idx = input_idx + 1
+    # print(f"input index : {input_idx}")
+    # print(f"target index : {target_idx}")
+    input = x[input_idx]
+    target = x[target_idx]
+    return (input , target)
 
 
 class Multihead_Self_Attention(nn.Module):
@@ -274,14 +289,16 @@ class AdamW(torch.optim.Optimizer):
         return loss
 
 def main():
-    weights = torch.nn.Parameter(5*torch.randn(10,10))
-    opt = SGD([weights],lr=1e1)
-    for t in range(100):
-        opt.zero_grad()
-        loss = (weights**2).mean()
-        print(loss.cpu().item())
-        loss.backward()
-        opt.step()
+    # weights = torch.nn.Parameter(5*torch.randn(10,10))
+    # opt = SGD([weights],lr=1e1)
+    # for t in range(100):
+    #     opt.zero_grad()
+    #     loss = (weights**2).mean()
+    #     print(loss.cpu().item())
+    #     loss.backward()
+    #     opt.step()
+    x = [0,1,2,3,4,5,6,7]
+    data_loading(x=x,batch_size=4,context_length=4)
 
 if __name__ == "__main__" :
     main()

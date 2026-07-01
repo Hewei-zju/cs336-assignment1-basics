@@ -431,9 +431,11 @@ def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:
     raise NotImplementedError
 
 
+from cs336_basics.model import data_loading
 def run_get_batch(
     dataset: npt.NDArray, batch_size: int, context_length: int, device: str
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    return data_loading(x=dataset,batch_size=batch_size,context_length=context_length,device=device)
     """
     Given a dataset (a 1D numpy array of integers) and a desired batch size and
     context length, sample language modeling input sequences and their corresponding
