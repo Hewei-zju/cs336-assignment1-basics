@@ -510,6 +510,7 @@ def get_adamw_cls() -> Any:
     raise NotImplementedError
 
 
+from cs336_basics.model import learning_rate_schedule
 def run_get_lr_cosine_schedule(
     it: int,
     max_learning_rate: float,
@@ -517,6 +518,7 @@ def run_get_lr_cosine_schedule(
     warmup_iters: int,
     cosine_cycle_iters: int,
 ):
+    return learning_rate_schedule(t=it,alpha_max=max_learning_rate,alpha_min=min_learning_rate,T_w=warmup_iters,T_c=cosine_cycle_iters)
     """
     Given the parameters of a cosine learning rate decay schedule (with linear
     warmup) and an iteration number, return the learning rate at the given

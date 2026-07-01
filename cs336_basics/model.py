@@ -122,6 +122,15 @@ def scaled_dot_product_attention(Q,K,V,mask=None) :
     out_put = einsum(A,V,"... q k,... k v->... q v")
     return out_put
 
+def learning_rate_schedule(t,alpha_max,alpha_min,T_w,T_c):
+    if t < T_w :
+        alpha_t = (t*alpha_max)/T_w
+    elif T_w <= t <= T_c :
+        alpha_t = alpha_min + 0.5*(1+math.cos(((t-T_w)*math.pi)/(T_c-T_w)))*(alpha_max-alpha_min)
+    else :
+        alpha_t = alpha_min
+    return alpha_t
+
 class Multihead_Self_Attention(nn.Module):
     def __init__(self,d_model:int,num_heads:int,rope=None,device=None,dtype=None):
         super().__init__()
