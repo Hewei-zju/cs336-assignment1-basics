@@ -542,13 +542,14 @@ def run_get_lr_cosine_schedule(
     """
     raise NotImplementedError
 
-
+from cs336_basics.model import save_checkpoint,load_checkpoint
 def run_save_checkpoint(
     model: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
     iteration: int,
     out: str | os.PathLike | BinaryIO | IO[bytes],
 ):
+    return save_checkpoint(model=model,optimizer=optimizer,iteration=iteration,out=out)
     """
     Given a model, optimizer, and an iteration number, serialize them to disk.
 
@@ -559,7 +560,6 @@ def run_save_checkpoint(
             we've completed.
         out (str | os.PathLike | BinaryIO | IO[bytes]): Path or file-like object to serialize the model, optimizer, and iteration to.
     """
-    raise NotImplementedError
 
 
 def run_load_checkpoint(
@@ -567,6 +567,7 @@ def run_load_checkpoint(
     model: torch.nn.Module,
     optimizer: torch.optim.Optimizer,
 ) -> int:
+    return load_checkpoint(model=model,optimizer=optimizer,src=src)
     """
     Given a serialized checkpoint (path or file-like object), restore the
     serialized state to the given model and optimizer.
@@ -580,7 +581,6 @@ def run_load_checkpoint(
     Returns:
         int: the previously-serialized number of iterations.
     """
-    raise NotImplementedError
 
 from cs336_basics.tokenizer import Tokenizer
 def get_tokenizer(
