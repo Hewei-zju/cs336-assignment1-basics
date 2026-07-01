@@ -54,6 +54,8 @@ class RMSNorm(nn.Module):
         result = (x/rms)*self.weight
         # result = einsum(self.g,x,"")
         return result.to(in_dtype)
+def silu(x):
+    return torch.sigmoid(x)*x
 
 class FFN(nn.Module):
     """
