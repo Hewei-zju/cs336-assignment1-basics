@@ -131,6 +131,22 @@ def learning_rate_schedule(t,alpha_max,alpha_min,T_w,T_c):
         alpha_t = alpha_min
     return alpha_t
 
+def gradient_clipping(parameters,max_l2_norm,eps = 1e-6):
+    total_norm = 0.0
+    for p in parameters:
+        if p.grad is None:
+            continue
+        total_norm += p.grad.norm(2).item()**2
+    total_norm = math.sqrt(total_norm)
+    scale_w = max_l2_norm/(total_norm+eps)
+    if total_norm >= max_l2_norm :
+        for p in parameters:
+            if p.grad is not None:
+                p.grad *= scale_w
+
+
+
+
 class Multihead_Self_Attention(nn.Module):
     def __init__(self,d_model:int,num_heads:int,rope=None,device=None,dtype=None):
         super().__init__()
