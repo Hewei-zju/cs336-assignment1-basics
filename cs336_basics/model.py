@@ -146,21 +146,21 @@ def gradient_clipping(parameters,max_l2_norm,eps = 1e-6):
             if p.grad is not None:
                 p.grad *= scale_w
 
-def data_loading(x,batch_size,context_length,device:str = "cpu"):
+def data_loading(tokens,batch_size,context_length,device:str = "cpu"):
     """
     x :[token_id,token_id,...]
     input : (batch_size,context_length)
     target : (batch_size,context_length)
     """
-    x = torch.as_tensor(x,device=device)
-    starts = torch.randint(0,len(x)-context_length,(batch_size,),device=device)
-    offset = torch.arange(context_length,device=device)
-    input_idx = starts.unsqueeze(1) + offset
-    target_idx = input_idx + 1
+    # tokens = torch.as_tensor(tokens,device=device)
+    starts = torch.randint(0,len(tokens)-context_length,(batch_size,),device=device)
+    # offset = torch.arange(context_length,device=device)
+    # input_idx = starts.unsqueeze(1) + offset
+    # target_idx = input_idx + 1
     # print(f"input index : {input_idx}")
     # print(f"target index : {target_idx}")
-    input = x[input_idx]
-    target = x[target_idx]
+    input = torch.tensor([tokens[start.item():start.item()+context_length] for start in starts]).to(device)
+    target = torch.tensor([tokens[start.item()+1:start.item()+context_length+1] for start in starts]).to(device)
     return (input , target)
 
 def save_checkpoint(model,optimizer,iteration,out):
@@ -197,9 +197,8 @@ class Multihead_Self_Attention(nn.Module):
             K = self.rope(K,token_positions)
         V = rearrange(V_cat,"... T (h d_v)->... h T d_v",h=self.num_heads)
         mh = scaled_dot_product_attention(Q,K,V) #mh shape : (...,h,seq_len,d_v)
-        mh_rearan= rearrange(mh,"... h seq_len d_v->... seq_len (h d_v)")
-        output = self.output_proj(mh_rearan)
-        return output
+        mh= rearrange(mh,"... h seq_len d_v->... seq_len (h d_v)")
+        return self.output_proj(mh)
 
 
 class Transformer_block(nn.Module):
@@ -215,8 +214,8 @@ class Transformer_block(nn.Module):
         self.ln2 = RMSNorm(d_model,device=device,dtype=dtype)
     def forward(self,x): #x.shape (...,seq_len,d_model)
         token_positions = torch.arange(x.shape[-2],device=x.device)
-        x_ = x + self.attn(self.ln1(x),token_positions)
-        output = x_ + self.ffn(self.ln2(x_))
+        x = x + self.attn(self.ln1(x),token_positions)
+        output = x + self.ffn(self.ln2(x))
         return output
 
 class Transformer_LM(nn.Module):

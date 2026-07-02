@@ -436,7 +436,7 @@ from cs336_basics.model import data_loading
 def run_get_batch(
     dataset: npt.NDArray, batch_size: int, context_length: int, device: str
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    return data_loading(x=dataset,batch_size=batch_size,context_length=context_length,device=device)
+    return data_loading(tokens=dataset,batch_size=batch_size,context_length=context_length,device=device)
     """
     Given a dataset (a 1D numpy array of integers) and a desired batch size and
     context length, sample language modeling input sequences and their corresponding
@@ -511,8 +511,6 @@ def get_adamw_cls() -> Any:
     Returns a torch.optim.Optimizer that implements AdamW.
     """
     return AdamW
-    raise NotImplementedError
-
 
 from cs336_basics.model import learning_rate_schedule
 def run_get_lr_cosine_schedule(

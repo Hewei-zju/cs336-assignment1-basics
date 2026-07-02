@@ -107,7 +107,7 @@ def merge_freq_tables(freq_tables : list[dict[tuple[bytes,bytes] : int]]) -> dic
 def parallel_arg(file_path:str) :
     file_size = os.path.getsize(file_path)/(1024**2)
     cpu_kernls = os.cpu_count() or 1
-    # print(cpu_kernls)
+    print(cpu_kernls)
     chunk_size = 32
     num_chunks =  math.ceil(file_size/chunk_size)
     num_process = min(max(num_chunks//8,1),cpu_kernls)
@@ -117,7 +117,7 @@ def parallel_arg(file_path:str) :
 
 def train_bpe(file_path ,vocab_size , special_tokens :list[bytes],**kwargs) ->tuple[dict[int,bytes],list[tuple[bytes,bytes]]] :
     time_start = time.perf_counter()
-    # print(f"training start at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"training start at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     vocab_dict = {}
     for i in range(256) :
@@ -129,7 +129,7 @@ def train_bpe(file_path ,vocab_size , special_tokens :list[bytes],**kwargs) ->tu
 
     num_process , num_chunks = parallel_arg(file_path) 
 
-    # print(f"process_num : {num_process}, chunk_nums:  {num_chunks}")
+    print(f"process_num : {num_process}, chunk_nums:  {num_chunks}")
     with open(file_path,"rb") as f :
         split_special_token = "<|endoftext|>".encode("utf-8")
         boundaries = find_chunk_boundaries(f,num_chunks,split_special_token)
@@ -138,7 +138,7 @@ def train_bpe(file_path ,vocab_size , special_tokens :list[bytes],**kwargs) ->tu
             freq_tables = pool.starmap(pre_tokenize_for_chunk,data_tuple)
 
     freq_table = merge_freq_tables(freq_tables)
-    # print(f"pre-tokenization done, elapsed: {time.perf_counter() - time_start:.2f}s")
+    print(f"pre-tokenization done, elapsed: {time.perf_counter() - time_start:.2f}s")
 
     #maintain a dict in which {pair->(tuples in freq_table)}
     # pair_tuple : dict[tuple[bytes,bytes],tuple[bytes,...]]= {}
@@ -193,9 +193,9 @@ def save(vocab_dict,merges,output_path_vocab,output_path_merges) :
 def main():
     vocab_size = 10000
     special_tokens = ["<|endoftext|>"]
-    file_path = "/mnt/d/用户/Desktop/CS336/assignment1-basics/data/TinyStoriesV2-GPT4-train.txt"
-    output_path_vocab = "/mnt/d/用户/Desktop/CS336/assignment1-basics/data/vocab_ts.pkl"
-    output_path_merges ="/mnt/d/用户/Desktop/CS336/assignment1-basics/data/merges_ts.pkl" 
+    file_path = "/home/hewei/cs336-assignment1-basics/data/TinyStoriesV2-GPT4-train.txt"
+    output_path_vocab = "/home/hewei/cs336-assignment1-basics/data/vocab_ts.pkl"
+    output_path_merges ="/home/hewei/cs336-assignment1-basics/data/merges_ts.pkl" 
     vocab_dict, merges = train_bpe(file_path,vocab_size,special_tokens)
     save(vocab_dict,merges,output_path_vocab,output_path_merges)
     print(max(vocab_dict.items(),key=lambda item : len(item[1])))

@@ -135,13 +135,17 @@ def main() :
     # with open(text_filepath,"r",encoding="utf-8") as f :
     #     text = f.read()
     text = "the cat ate 你好"
-    print(text.encode("utf-8"))
-    print(f"the text is : {text}")
+    # print(text.encode("utf-8"))
+    # print(f"the text is : {text}")
     tokenizer = Tokenizer.from_files(vocab_filepath,merges_filepath,special_tokens)
-    ids = tokenizer.encode(text)
-    print(f"the ids is : {ids}")
-    decode_text = tokenizer.decode(ids)
-    print(f"decode text is :{decode_text}")
+    it = tokenizer.encode_iterable(text)
+    print(it.next())
+    print(it.next())
+    print(it.next())
+    print(it.next())
+    # print(f"the ids is : {ids}")
+    # decode_text = tokenizer.decode(ids)
+    # print(f"decode text is :{decode_text}")
 
 if __name__ == "__main__":
     main()

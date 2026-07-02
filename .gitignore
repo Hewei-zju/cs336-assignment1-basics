@@ -161,4 +161,4 @@ cython_debug/
 
 .ruff_cache/
 *.zip
-/data/
+/data/TinyStoriesV2-GPT4-train.txt
