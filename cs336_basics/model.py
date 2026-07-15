@@ -113,11 +113,11 @@ def softmax(x : torch.Tensor, i : int) :
     out_put = torch.exp(x_)/s
     return out_put
 
-def scaled_dot_product_attention(Q,K,V,mask=None) :
+def scaled_dot_product_attention(Q,K,V,device,mask=None) :
     Q_K = einsum(Q,K,"... seq_len_q d_k,... seq_len_k d_k->... seq_len_q seq_len_k")/math.sqrt(float(Q.shape[-1]))
     seq_len = Q.shape[-2]
     if mask is None:
-        mask = torch.tril(torch.ones(seq_len,seq_len,dtype=torch.bool)) 
+        mask = torch.tril(torch.ones(seq_len,seq_len,dtype=torch.bool,device=device)) 
         # print(f"mask : {mask}")
     QK_masked = Q_K.masked_fill(~mask,float("-inf"))
     A = softmax(QK_masked,-1)
@@ -186,6 +186,8 @@ class Multihead_Self_Attention(nn.Module):
         self.v_proj = Linear(d_model,d_model,device,dtype) #(h*d_v,d_model)
         self.output_proj = Linear(d_model,d_model,device,dtype) #(d_model,h*d_v)
         self.rope = rope
+        self.device = device
+        self.dtype = dtype
     def forward(self,x : torch.Tensor,token_positions = None):
         Q_cat = self.q_proj(x) 
         K_cat = self.k_proj(x)
@@ -196,7 +198,7 @@ class Multihead_Self_Attention(nn.Module):
             Q = self.rope(Q,token_positions)
             K = self.rope(K,token_positions)
         V = rearrange(V_cat,"... T (h d_v)->... h T d_v",h=self.num_heads)
-        mh = scaled_dot_product_attention(Q,K,V) #mh shape : (...,h,seq_len,d_v)
+        mh = scaled_dot_product_attention(Q,K,V,device=self.device) #mh shape : (...,h,seq_len,d_v)
         mh= rearrange(mh,"... h seq_len d_v->... seq_len (h d_v)")
         return self.output_proj(mh)
 
