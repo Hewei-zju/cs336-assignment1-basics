@@ -113,11 +113,11 @@ def softmax(x : torch.Tensor, i : int) :
     out_put = torch.exp(x_)/s
     return out_put
 
-def scaled_dot_product_attention(Q,K,V,device,mask=None) :
+def scaled_dot_product_attention(Q,K,V,mask=None) :
     Q_K = einsum(Q,K,"... seq_len_q d_k,... seq_len_k d_k->... seq_len_q seq_len_k")/math.sqrt(float(Q.shape[-1]))
     seq_len = Q.shape[-2]
     if mask is None:
-        mask = torch.tril(torch.ones(seq_len,seq_len,dtype=torch.bool,device=device)) 
+        mask = torch.tril(torch.ones(seq_len,seq_len,dtype=torch.bool,device=Q.device)) 
         # print(f"mask : {mask}")
     QK_masked = Q_K.masked_fill(~mask,float("-inf"))
     A = softmax(QK_masked,-1)
@@ -198,7 +198,7 @@ class Multihead_Self_Attention(nn.Module):
             Q = self.rope(Q,token_positions)
             K = self.rope(K,token_positions)
         V = rearrange(V_cat,"... T (h d_v)->... h T d_v",h=self.num_heads)
-        mh = scaled_dot_product_attention(Q,K,V,device=self.device) #mh shape : (...,h,seq_len,d_v)
+        mh = scaled_dot_product_attention(Q,K,V) #mh shape : (...,h,seq_len,d_v)
         mh= rearrange(mh,"... h seq_len d_v->... seq_len (h d_v)")
         return self.output_proj(mh)
 
