@@ -1,6 +1,7 @@
 import argparse
 from tokenizer import Tokenizer
 from model import *
+import numpy as np
 parser = argparse.ArgumentParser()
 parser.add_argument("--device",type=str,default="cpu")
 parser.add_argument("--filepath",type=str,default="/home/hewei/cs336-assignment1-basics/data/TinyStoriesV2-GPT4-valid.txt")
@@ -51,20 +52,35 @@ def main():
     betas = args.betas
     weight_decay = args.weight_decay
     iterations = args.iterations
+    outpath = "/home/hewei/cs336-assignment1-basics/data/training_dataset.bin"
 
     tokenizer = Tokenizer.from_files(vocab_filepath=vocab_filepath,merges_filepath=merges_filepath,special_tokens=special_tokens)
-    
-    with open(filepath,"r") as f:
-        training_dataset = f.read()
-    print(f"training data loaded")
-    
-    tokens = tokenizer.encode(training_dataset)
-    training_dataset = None
+    #load the training data, tokenize and save
+    buffer = []
+    memery_chunk_size = 1000000
+    with open(filepath,"r") as f,open(outpath,"wb") as out:
+        training_tokens = tokenizer.encode_iterable(f)
+        for token in training_tokens:
+            buffer.append(token)
+            if len(buffer) >= memery_chunk_size:
+                out.write(np.asarray(buffer,dtype=np.int32).tobytes())
+                buffer.clear()
+        if buffer :
+            np.asarray(buffer,dtype = np.int32).tofile(out)
+            
+
+    print(f"training data tokenized in file : {outpath}")
+
+    tokens = np.memmap(outpath,
+                        dtype=np.int32,
+                        mode="r",
+                    )
     print(f"tokens shape {len(tokens)}")
     model = Transformer_LM(d_model=d_model,num_heads=num_heads,d_ff=d_ff,theta=theta,vocab_size=vocab_size,context_length=context_length,num_layers=num_layers,device=device,dtype=dtype)
     optimizer = AdamW(params=model.parameters(),lr=lr,eps=eps,betas=betas,weight_decay=weight_decay)
     #training loop
     print(f"training starts,total traning loop {iterations}")
+    print(f"training on device : {device}")
     for it in range(iterations):
         # print(f"this is training loop {it}")
         x,target = data_loading(tokens=tokens,batch_size=batch_size,context_length=context_length,device=device)
@@ -72,7 +88,7 @@ def main():
         logits = model(x) #shape (batch_size,context_length,vocab_size)
         # print(f"logits of model : {logits}")
         loss = cross_entropy(logits.reshape(-1,logits.shape[-1]),target.reshape(-1))
-        print(f"iteration {it}, loss : {loss}")
+        if it%100 == 0 : print(f"iteration {it}, loss : {loss}")
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
