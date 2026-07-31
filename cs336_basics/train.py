@@ -5,10 +5,11 @@ import numpy as np
 from pathlib import Path
 from tqdm import tqdm
 parser = argparse.ArgumentParser()
-parser.add_argument("--device",type=str,default="cpu")
-parser.add_argument("--filepath",type=str,default="data/TinyStoriesV2-GPT4-train.txt")
-parser.add_argument("--lr",type=float,default=3e-4)
-parser.add_argument("--batch_size",type=int,default=16)
+parser.add_argument("--device",type=str,default="cuda")
+parser.add_argument("--filepath_training",type=str,default="data/TinyStoriesV2-GPT4-train.txt")
+parser.add_argument("--filepath_validation",type=str,default="data/TinyStoriesV2-GPT4-valid.txt")
+parser.add_argument("--lr",type=float,default=1e-4)
+parser.add_argument("--batch_size",type=int,default=8)
 parser.add_argument("--vocab_filepath",type=str,default="data/vocab_ts.pkl")
 parser.add_argument("--merges_filepath",type=str,default="data/merges_ts.pkl")
 parser.add_argument("--special_tokens",type=str,nargs= "+",default=["<|endoftext|>"])
@@ -36,7 +37,8 @@ dtype_mapping = {
 def main():
     args = parser.parse_args()
     #
-    filepath = args.filepath
+    filepath_training = args.filepath_training
+    filepath_validation = args.filepath_validation
     vocab_filepath=args.vocab_filepath
     merges_filepath=args.merges_filepath
     special_tokens = args.special_tokens
@@ -55,19 +57,37 @@ def main():
     betas = args.betas
     weight_decay = args.weight_decay
     iterations = args.iterations
-    training_dataset_path = Path("data/training_dataset.bin")
-    checkpoint_path = Path("data/checkpoint.pt")
+    training_dataset_path = Path("data/train.bin")
+    valid_path = Path("data/valid.bin")
+    checkpoint_path = Path("data/checkpoint_local.pt")
 
     tokenizer = Tokenizer.from_files(vocab_filepath=vocab_filepath,merges_filepath=merges_filepath,special_tokens=special_tokens)
+    #load the valid data
+    print(f"validation dataset loading...")
+    if not valid_path.exists():
+            buffer = []
+            memery_chunk_size = 1000000
+            num_chunks = 0
+            with open(filepath_validation,"r") as f,open(valid_path,"wb") as out:
+                valid_tokens = tokenizer.encode_iterable(f)
+                for token in valid_tokens:
+                    buffer.append(token)
+                    if len(buffer) >= memery_chunk_size:
+                        out.write(np.asarray(buffer,dtype=np.int32).tobytes())
+                        buffer.clear()
+                if buffer :
+                    np.asarray(buffer,dtype = np.int32).tofile(out)
+    print(f"validation dataset loaded")
+        
     #load the training data, tokenize and save
     print(f"training dataset loading...")
     if not training_dataset_path.exists():
         buffer = []
         memery_chunk_size = 1000000
         num_chunks = 0
-        with open(filepath,"r") as f,open(training_dataset_path,"wb") as out:
+        with open(filepath_training,"r") as f,open(training_dataset_path,"wb") as out:
             training_tokens = tokenizer.encode_iterable(f)
-            for token in tqdm(training_tokens,total=540796778):
+            for token in training_tokens:
                 buffer.append(token)
                 if len(buffer) >= memery_chunk_size:
                     out.write(np.asarray(buffer,dtype=np.int32).tobytes())
@@ -81,6 +101,10 @@ def main():
                         dtype=np.int32,
                         mode="r",
                     )
+    validation_tokens = np.memmap(valid_path,
+                                    dtype=np.int32,
+                                    mode = "r",
+                                    )
     print(f"tokens shape {len(tokens)}")
     #initialize model and otpimizer 
     model = Transformer_LM(d_model=d_model,num_heads=num_heads,d_ff=d_ff,theta=theta,vocab_size=vocab_size,context_length=context_length,num_layers=num_layers,device=device,dtype=dtype)
@@ -106,9 +130,14 @@ def main():
         loss.backward()
         optimizer.step()
         if it%100 == 0 or it+1 == iterations: 
-            print(f"iteration {it}, loss : {loss}")
+            tqdm.write(f"iteration {it}, training loss: {loss.item():.8f}")
             save_checkpoint(model=model,optimizer=optimizer,iteration=it,out=checkpoint_path)
-    print(f"Final loss : {loss}")
+            #validation
+            with torch.no_grad():
+                x_v, target_v = data_loading(tokens=validation_tokens,batch_size=batch_size,context_length=context_length,device=device)
+                logits_v = model(x_v) #shape (batch_size,context_length,vocab_size)
+                loss_v = cross_entropy(logits_v.reshape(-1,logits_v.shape[-1]),target_v.reshape(-1))
+                tqdm.write(f"iteration {it}, validatino loss: {loss_v.item():.8f}")
 
 if __name__ == "__main__":
     main()
