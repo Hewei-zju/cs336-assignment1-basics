@@ -19,9 +19,9 @@ generate a text with a trained model and a given prompt.
 parser.add_argument("--vocab_filepath",type=str,default="data/vocab_ts.pkl")
 parser.add_argument("--merges_filepath",type=str,default="data/merges_ts.pkl")
 parser.add_argument("--special_tokens",type=str,nargs= "+",default=["<|endoftext|>"])
-parser.add_argument("--prompt",type=str,default = "Hello, this is gpt. I am a")
+parser.add_argument("--prompt",type=str,default = "the cat caught the mouse, and then")
 parser.add_argument("--model_path",type=str,default = "data/checkpoint.pt")
-parser.add_argument("--max_context",type=int,default = 32)
+parser.add_argument("--max_context",type=int,default = 64)
 
 def main():
     args = parser.parse_args()
@@ -35,7 +35,6 @@ def main():
     print(f"prompt : {args.prompt}")
     print(f"prompt tokens : {prompt_tokens}")
     #load the model
-    checkpoint = torch.load(args.model_path)
     model_config = {
         "d_model" : 768,
         "num_heads" : 4,
@@ -48,18 +47,21 @@ def main():
         "dtype" : torch.float32,
     }
     model = Transformer_LM(**model_config)
-    while True:
-        #compute logits
-        x = torch.tensor([prompt_tokens])
-        logits = model(x) #logits.shape : (prompt_length,vocab_size)
-        next_token_id = torch.argmax(logits[:,-1,:],dim=-1).item()
-        prompt_tokens.append(next_token_id)
-        next_word = tokenizer.decode([next_token_id])
-        args.prompt += next_word
-        print(f"prompt : {args.prompt}")
+    load_checkpoint(args.model_path,model)
+    print(args.prompt,end="")
+    with torch.no_grad():
+        while True:
+            #compute logits
+            x = torch.tensor([prompt_tokens])
+            logits = model(x) #logits.shape : (prompt_length,vocab_size)
+            next_token_id = torch.argmax(logits[:,-1,:],dim=-1).item()
+            if next_token_id == 256:
+                break
+            prompt_tokens.append(next_token_id)
+            print(tokenizer.decode([next_token_id]), end="", flush=True)
 
-        if len(prompt_tokens) > args.max_context or next_word == "<|endoftext|>":
-            break
-        
+            if len(prompt_tokens) > args.max_context :
+                break
+    print()
 if __name__ == "__main__":
     main()
