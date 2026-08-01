@@ -33,6 +33,11 @@ dtype_mapping = {
     "int32" : torch.int32,
     "int64" : torch.int64
 }
+class Trainer():
+    def __init__(self):
+        pass
+    def train(self):
+        pass
 
 def main():
     args = parser.parse_args()
@@ -107,7 +112,18 @@ def main():
                                     )
     print(f"tokens shape {len(tokens)}")
     #initialize model and otpimizer 
-    model = Transformer_LM(d_model=d_model,num_heads=num_heads,d_ff=d_ff,theta=theta,vocab_size=vocab_size,context_length=context_length,num_layers=num_layers,device=device,dtype=dtype)
+    model_config = {
+        "d_model" : d_model,
+        "num_heads" : num_heads,
+        "d_ff" : d_ff,
+        "theta" : theta,
+        "vocab_size" : vocab_size,
+        "context_length" : context_length,
+        "num_layers" : num_layers,
+        "device" : device,
+        "dtype" : dtype_mapping[dtype],
+    }
+    model = Transformer_LM(**model_config)
     optimizer = AdamW(params=model.parameters(),lr=lr,eps=eps,betas=betas,weight_decay=weight_decay)
     start_iteration = 0
     if args.resume and checkpoint_path.exists():
@@ -129,15 +145,15 @@ def main():
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        if it%100 == 0 or it+1 == iterations: 
+        if it%1000 == 0 or it+1 == iterations: 
             tqdm.write(f"iteration {it}, training loss: {loss.item():.8f}")
-            save_checkpoint(model=model,optimizer=optimizer,iteration=it,out=checkpoint_path)
+            save_checkpoint(model=model,optimizer=optimizer,iteration=it,model_config=model_config,out=checkpoint_path)
             #validation
             with torch.no_grad():
                 x_v, target_v = data_loading(tokens=validation_tokens,batch_size=batch_size,context_length=context_length,device=device)
                 logits_v = model(x_v) #shape (batch_size,context_length,vocab_size)
                 loss_v = cross_entropy(logits_v.reshape(-1,logits_v.shape[-1]),target_v.reshape(-1))
-                tqdm.write(f"iteration {it}, validatino loss: {loss_v.item():.8f}")
+                tqdm.write(f"iteration {it}, validation loss: {loss_v.item():.8f}")
 
 if __name__ == "__main__":
     main()

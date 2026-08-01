@@ -163,8 +163,8 @@ def data_loading(tokens,batch_size,context_length,device:str = "cpu"):
     target = torch.tensor([tokens[start.item()+1:start.item()+context_length+1] for start in starts]).to(device)
     return (input , target)
 
-def save_checkpoint(model,optimizer,iteration,out):
-    checkpoint = {"model":model.state_dict(),"optimizer":optimizer.state_dict(),"iteration":iteration}
+def save_checkpoint(model,optimizer,iteration,out,model_config = {}):
+    checkpoint = {"model":model.state_dict(),"optimizer":optimizer.state_dict(),"iteration":iteration,"model_config":model_config}
     torch.save(checkpoint,out)
 
 def load_checkpoint(src,model,optimizer):

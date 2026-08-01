@@ -134,12 +134,11 @@ def main() :
     text_filepath = "/home/hewei/cs336-assignment1-basics/data/test.txt"
     # with open(text_filepath,"r",encoding="utf-8") as f :
     #     text = f.read()
-    text = "the cat ate 你好"
+    text = None 
     # print(text.encode("utf-8"))
     # print(f"the text is : {text}")
     tokenizer = Tokenizer.from_files(vocab_filepath,merges_filepath,special_tokens)
     it = tokenizer.encode(text)
-    print(type(it[0]))
     # print(f"the ids is : {ids}")
     # decode_text = tokenizer.decode(ids)
     # print(f"decode text is :{decode_text}")
