@@ -4,6 +4,8 @@ from model import *
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
+import wandb
+import time
 parser = argparse.ArgumentParser()
 parser.add_argument("--device",type=str,default="cuda")
 parser.add_argument("--filepath_training",type=str,default="data/TinyStoriesV2-GPT4-train.txt")
@@ -64,7 +66,16 @@ def main():
     iterations = args.iterations
     training_dataset_path = Path("data/train.bin")
     valid_path = Path("data/valid.bin")
-    checkpoint_path = Path("data/checkpoint_local.pt")
+    checkpoint_path = Path("data/checkpoint.pt")
+    #wandb
+    run = wandb.init(
+        project = "cs336-assignment1-TinyStories",
+        name = f"lr-{args.lr}-batch_size-{args.batch_size}",
+        config = vars(args)
+    )
+    run.define_metric("iteration")
+    run.define_metric("*",step_metric = "iteration")
+    start_time = time.perf_counter()
 
     tokenizer = Tokenizer.from_files(vocab_filepath=vocab_filepath,merges_filepath=merges_filepath,special_tokens=special_tokens)
     #load the valid data
@@ -121,7 +132,7 @@ def main():
         "context_length" : context_length,
         "num_layers" : num_layers,
         "device" : device,
-        "dtype" : dtype_mapping[dtype],
+        "dtype" : dtype,
     }
     model = Transformer_LM(**model_config)
     optimizer = AdamW(params=model.parameters(),lr=lr,eps=eps,betas=betas,weight_decay=weight_decay)
@@ -145,6 +156,17 @@ def main():
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
+        #wandb log
+        metrics = {
+            "iteration" : it,
+            "train/loss" : loss.item(),
+            "train/learning_rate" : optimizer.param_groups[0]["lr"],
+            "time/wall_time_seconds" : time.perf_counter() - start_time,
+            "train/tokens_processed" : (
+                (it+1) * batch_size * context_length
+            ),
+        }
         if it%1000 == 0 or it+1 == iterations: 
             tqdm.write(f"iteration {it}, training loss: {loss.item():.8f}")
             save_checkpoint(model=model,optimizer=optimizer,iteration=it,model_config=model_config,out=checkpoint_path)
@@ -154,6 +176,10 @@ def main():
                 logits_v = model(x_v) #shape (batch_size,context_length,vocab_size)
                 loss_v = cross_entropy(logits_v.reshape(-1,logits_v.shape[-1]),target_v.reshape(-1))
                 tqdm.write(f"iteration {it}, validation loss: {loss_v.item():.8f}")
+            
+            metrics["validation/loss"] = loss_v.item()
+        run.log(metrics)
+    run.finish()
 
 if __name__ == "__main__":
     main()

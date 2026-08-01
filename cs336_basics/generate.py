@@ -19,9 +19,9 @@ generate a text with a trained model and a given prompt.
 parser.add_argument("--vocab_filepath",type=str,default="data/vocab_ts.pkl")
 parser.add_argument("--merges_filepath",type=str,default="data/merges_ts.pkl")
 parser.add_argument("--special_tokens",type=str,nargs= "+",default=["<|endoftext|>"])
-parser.add_argument("--prompt",type=str,default = "the cat caught the mouse, and then")
-parser.add_argument("--model_path",type=str,default = "data/checkpoint.pt")
-parser.add_argument("--max_context",type=int,default = 64)
+parser.add_argument("--prompt",type=str,default = "Once upon a time, there was a pretty girl named Lily. She loved to eat gum, especially the big black one. One day, Lily's mom asked her to help cook dinner. Lily was so excited! She loved to help her mom.")
+parser.add_argument("--model_path",type=str,default = "data/checkpoint_4h.pt")
+parser.add_argument("--max_context",type=int,default = 256)
 
 def main():
     args = parser.parse_args()
@@ -32,8 +32,8 @@ def main():
         special_tokens=args.special_tokens,
         )
     prompt_tokens = tokenizer.encode(args.prompt) 
-    print(f"prompt : {args.prompt}")
-    print(f"prompt tokens : {prompt_tokens}")
+    # print(f"prompt : {args.prompt}")
+    # print(f"prompt tokens : {prompt_tokens}")
     #load the model
     model_config = {
         "d_model" : 768,
