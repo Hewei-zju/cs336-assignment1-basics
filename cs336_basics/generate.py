@@ -19,10 +19,24 @@ generate a text with a trained model and a given prompt.
 parser.add_argument("--vocab_filepath",type=str,default="data/vocab_ts.pkl")
 parser.add_argument("--merges_filepath",type=str,default="data/merges_ts.pkl")
 parser.add_argument("--special_tokens",type=str,nargs= "+",default=["<|endoftext|>"])
-parser.add_argument("--prompt",type=str,default = "Once upon a time, there was a pretty girl named Lily. She loved to eat gum, especially the big black one. One day, Lily's mom asked her to help cook dinner. Lily was so excited! She loved to help her mom.")
+parser.add_argument("--prompt",type=str,default = "Once upon a time, there was a little girl named Lily.")
 parser.add_argument("--model_path",type=str,default = "data/checkpoint_4h.pt")
 parser.add_argument("--max_context",type=int,default = 256)
+parser.add_argument("--temperature",type=float,default = 0.5)
+parser.add_argument("--p",type=float,default = 0.8)
 
+def top_p_choose(prob:torch.tensor,p:float):
+    sorted_prob, sorted_indice = torch.sort(prob,dim=-1,descending = True)
+    cumulative_prob = torch.cumsum(sorted_prob,dim=-1)
+    mask = cumulative_prob >= p
+    #right shift mask
+    mask[...,1:] = mask[...,:-1].clone()
+    mask[...,0] = False
+    sorted_prob = sorted_prob.masked_fill(mask,0.0)
+    sorted_prob = sorted_prob/torch.sum(sorted_prob,dim=-1,keepdim=True)
+    sampled_indice = torch.multinomial(sorted_prob,num_samples=1)
+    next_token_id = sorted_indice.gather(dim=-1,index = sampled_indice)
+    return next_token_id
 def main():
     args = parser.parse_args()
     #tokenize the prompt
@@ -31,7 +45,9 @@ def main():
         merges_filepath=args.merges_filepath,
         special_tokens=args.special_tokens,
         )
+    end_of_text_id = tokenizer.reversed_vocab["<|endoftext|>".encode("utf-8")]
     prompt_tokens = tokenizer.encode(args.prompt) 
+    x = torch.tensor([prompt_tokens],device = "cuda")
     # print(f"prompt : {args.prompt}")
     # print(f"prompt tokens : {prompt_tokens}")
     #load the model
@@ -50,18 +66,18 @@ def main():
     load_checkpoint(args.model_path,model)
     print(args.prompt,end="")
     with torch.no_grad():
-        while True:
+        while x.shape[-1] < args.max_context:
             #compute logits
-            x = torch.tensor([prompt_tokens])
-            logits = model(x) #logits.shape : (prompt_length,vocab_size)
-            next_token_id = torch.argmax(logits[:,-1,:],dim=-1).item()
-            if next_token_id == 256:
+            logits = model(x)[:,-1,:]/args.temperature #logits.shape : (prompt_length,vocab_size)
+            prob = softmax(logits,i=-1)
+            # next_token_id = torch.argmax(prob[:,-1,:],dim=-1).item()
+            next_token_tensor = top_p_choose(prob,args.p)
+            # prompt_tokens.append(next_token_id)
+            x = torch.cat([x,next_token_tensor],dim=-1)
+            next_token_id = next_token_tensor.item()
+            if next_token_id == end_of_text_id:
                 break
-            prompt_tokens.append(next_token_id)
             print(tokenizer.decode([next_token_id]), end="", flush=True)
-
-            if len(prompt_tokens) > args.max_context :
-                break
     print()
 if __name__ == "__main__":
     main()
